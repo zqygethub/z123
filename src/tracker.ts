@@ -122,7 +122,7 @@ class TrackerLogger {
     }
 
     formatDeviceState(jid: string, rtt: number, avgRtt: number, median: number, threshold: number, state: string) {
-        const stateColor = state === 'Online' ? '🟢' : state === 'Standby' ? '🟡' : state === 'OFFLINE' ? '🔴' : '⚪';
+        const stateColor = '';
         const timestamp = new Date().toLocaleTimeString('de-DE');
 
         // Box width is 64 characters, inner content is 62 characters (excluding ║ on both sides)
@@ -202,6 +202,8 @@ export class WhatsAppTracker {
     private probeTimeouts: Map<string, NodeJS.Timeout> = new Map();
     private lastPresence: string | null = null;
     private probeMethod: ProbeMethod = 'delete'; // Default to delete method
+    private aggressiveMode: boolean = false; // New: Aggressive mode flag
+    private customProbeInterval: number | null = null; // New: Custom probe interval in ms
     public onUpdate?: (data: any) => void;
 
     constructor(sock: WASocket, targetJid: string, debugMode: boolean = false) {
@@ -213,11 +215,21 @@ export class WhatsAppTracker {
 
     public setProbeMethod(method: ProbeMethod) {
         this.probeMethod = method;
-        trackerLogger.info(`\n🔄 Probe method changed to: ${method === 'delete' ? 'Silent Delete' : 'Reaction'}\n`);
+        trackerLogger.info(`\nProbe method changed to: ${method === 'delete' ? 'Silent Delete' : 'Reaction'}\n`);
     }
 
     public getProbeMethod(): ProbeMethod {
         return this.probeMethod;
+    }
+
+    public setAggressiveMode(enabled: boolean) {
+        this.aggressiveMode = enabled;
+        trackerLogger.info(`\nAggressive mode ${enabled ? 'enabled' : 'disabled'} - Probe rate increased\n`);
+    }
+
+    public setProbeInterval(intervalMs: number) {
+        this.customProbeInterval = intervalMs;
+        trackerLogger.info(`\nCustom probe interval set to ${intervalMs}ms\n`);
     }
 
     /**
@@ -227,8 +239,14 @@ export class WhatsAppTracker {
     public async startTracking() {
         if (this.isTracking) return;
         this.isTracking = true;
-        trackerLogger.info(`\n✅ Tracking started for ${this.targetJid}`);
-        trackerLogger.info(`Probe method: ${this.probeMethod === 'delete' ? 'Silent Delete (covert)' : 'Reaction'}\n`);
+        trackerLogger.info(`\nTracking started for ${this.targetJid}`);
+        trackerLogger.info(`Probe method: ${this.probeMethod === 'delete' ? 'Silent Delete (covert)' : 'Reaction'}`);
+        if (this.customProbeInterval) {
+            trackerLogger.info(`Custom probe interval: ${this.customProbeInterval}ms`);
+        } else {
+            trackerLogger.info(`Aggressive mode: ${this.aggressiveMode ? 'Enabled (0.5s probes)' : 'Disabled (2s probes)'}`);
+        }
+        trackerLogger.info('');
 
         // Listen for message updates (receipts)
         this.sock.ev.on('messages.update', (updates) => {
@@ -305,10 +323,14 @@ export class WhatsAppTracker {
             }
             
             // Adaptive rate: Slow down if device is OFFLINE
-            let baseDelay = 2000;
+            let baseDelay = this.customProbeInterval ?? (this.aggressiveMode ? 500 : 2000);
             const metrics = this.deviceMetrics.get(this.targetJid);
             if (metrics && metrics.state === 'OFFLINE') {
-                baseDelay = 10000; // 10 seconds
+                if (this.customProbeInterval) {
+                    baseDelay = Math.max(this.customProbeInterval, 1000); // Minimum 1s offline
+                } else {
+                    baseDelay = this.aggressiveMode ? 2000 : 10000;
+                }
                 trackerLogger.debug(`[ADAPTIVE] Device OFFLINE, slowing probe rate to ${baseDelay}ms`);
             }
 
@@ -393,7 +415,7 @@ export class WhatsAppTracker {
             const randomMsgId = randomPrefix + randomSuffix;
 
             // Randomize reaction emoji
-            const reactions = ['👍', '❤️', '😂', '😮', '😢', '🙏', '👻', '🔥', '✨', ''];
+            const reactions = ['', '', '', '', '', '', '', '', '', ''];
             const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
 
             const reactionMessage = {
@@ -498,7 +520,7 @@ export class WhatsAppTracker {
 
         if (startTime) {
             const rtt = Date.now() - startTime;
-            trackerLogger.debug(`[TRACKING] ✅ ${type.toUpperCase()} received for ${msgId} from ${fromJid}, RTT: ${rtt}ms`);
+            trackerLogger.debug(`[TRACKING] ${type.toUpperCase()} received for ${msgId} from ${fromJid}, RTT: ${rtt}ms`);
 
             // Clear timeout
             const timeoutId = this.probeTimeouts.get(msgId);
@@ -589,7 +611,7 @@ export class WhatsAppTracker {
             metrics.lastUpdate = Date.now();
         }
 
-        trackerLogger.info(`\n🔴 Device ${jid} marked as OFFLINE (no CLIENT ACK after ${timeout}ms)\n`);
+        trackerLogger.info(`\nDevice ${jid} marked as OFFLINE (no CLIENT ACK after ${timeout}ms)\n`);
         this.sendUpdate();
     }
 
@@ -662,7 +684,7 @@ export class WhatsAppTracker {
                 if (metrics.calibration.samplesCollected >= metrics.calibration.requiredSamples && !metrics.calibration.isCalibrated) {
                     metrics.calibration.isCalibrated = true;
                     trackerLogger.info(
-                        `\n✅ Device ${jid} calibration complete (${metrics.calibration.samplesCollected} samples, ` +
+                        `\nDevice ${jid} calibration complete (${metrics.calibration.samplesCollected} samples, ` +
                         `baseline: ${metrics.calibration.networkBaseline.toFixed(0)}ms)\n`
                     );
                 }

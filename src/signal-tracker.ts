@@ -374,7 +374,7 @@ export class SignalTracker {
      */
     private async sendReactionProbe() {
         const timestamp = Date.now();
-        const reactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+        const reactions = ['', '', '', '', '', ''];
         const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
 
         try {
@@ -778,7 +778,7 @@ export class SignalTracker {
             );
         }
 
-        const stateColor = metrics.state.includes('Active') ? '🟢' : metrics.state === DeviceState.SCREEN_ON ? '🟡' : '⚪';
+        const stateColor = '';
         const movingAvg = metrics.recentRtts.reduce((a, b) => a + b, 0) / metrics.recentRtts.length;
         logger.info(`${stateColor} ${identifier}: ${metrics.state} (RTT: ${metrics.lastRtt}ms, Avg: ${movingAvg.toFixed(0)}ms, EMA: ${metrics.ema.toFixed(0)}ms)`);
     }
