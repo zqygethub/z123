@@ -28,7 +28,14 @@ export function Login({ connectionState }: LoginProps) {
                     <>
                         <div className="bg-gray-50 p-4 rounded-lg mb-6">
                             {connectionState.whatsappQr ? (
-                                <QRCodeSVG value={connectionState.whatsappQr} size={256} />
+                                <div className="flex flex-col items-center gap-2">
+                                    <QRCodeSVG value={connectionState.whatsappQr} size={256} />
+                                    <textarea
+                                        className="mt-2 w-64 h-20 text-xs p-2 border rounded"
+                                        readOnly
+                                        value={connectionState.whatsappQr}
+                                    />
+                                </div>
                             ) : (
                                 <div className="w-64 h-64 flex items-center justify-center text-gray-400">
                                     Waiting for QR Code...

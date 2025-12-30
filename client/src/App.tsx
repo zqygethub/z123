@@ -35,6 +35,14 @@ function App() {
             setIsConnected(true);
         }
 
+        function onConnectError(err: any) {
+            console.error('[SOCKET] connect_error', err);
+        }
+
+        function onSocketError(err: any) {
+            console.error('[SOCKET] error', err);
+        }
+
         function onDisconnect() {
             setIsConnected(false);
             setConnectionState({
@@ -82,6 +90,8 @@ function App() {
         }
 
         socket.on('connect', onConnect);
+        socket.on('connect_error', onConnectError);
+        socket.on('error', onSocketError);
         socket.on('disconnect', onDisconnect);
         socket.on('qr', onWhatsAppQr);
         socket.on('connection-open', onWhatsAppConnectionOpen);
@@ -97,6 +107,8 @@ function App() {
 
         return () => {
             socket.off('connect', onConnect);
+            socket.off('connect_error', onConnectError);
+            socket.off('error', onSocketError);
             socket.off('disconnect', onDisconnect);
             socket.off('qr', onWhatsAppQr);
             socket.off('connection-open', onWhatsAppConnectionOpen);
